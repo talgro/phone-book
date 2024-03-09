@@ -4,23 +4,26 @@ The contact service is responsible for managing the contacts of the users. It al
 update their contacts. The service also provides the ability to search for contacts.
 
 - Notes:
+  - The service supports the following operations:
+    - Create a contact for an existing user
+    - Update a contact of an existing user
+    - Get a contact of an existing user
+    - Search contacts of an existing user
+    - Delete a contact of an existing user
+  - The service supports logging by stdout. In production, the logs would be sent to a log aggregator like Datadog.
+  - The service uses the `myerror` package to wrap errors and handle different HTTP status codes.
+  - Due to the lack of cloud resources, the service uses only in-memory resources. This means that the data will be lost
+    when the service is restarted.
+  - In order to handle high scale, the service would use a document-based database like MongoDB and a distributed cache like Redis.   
   - User management is out of the scope of the service.
   - The service currently does not support user authentication and authorization.
-  - Due to the lack of cloud resources, the service uses an in-memory database and cache. This means that the data will be lost
-    when the service is restarted.
 
 
 - ⭐ Bonuses 
   - As a bonus feature, the service provides a search endpoint that allows the user to search for contacts by their first name,
     last name, address, and phone number. The search endpoint also supports pagination.
   - Another bonus feature that wasn't implemented is the ability to upload a contact's photo, and get all photos of a contact that were uploaded by other users. This can be implemented by adding another microservice (image-service) to the system, and using a message broker like Kafka to communicate between the services. In addition, the service would use an object-store like AWS S3 to store the images.
-
-
-- Production:
-  - Due to the lack of cloud resources, the service uses an in-memory database and cache. This means that the data will be lost
-    when the service is restarted.
-  - In a production environment, the service would use a document-based database like MongoDB and a distributed cache like Redis.
-
+  
 ---
 
 ## Running the service
