@@ -11,6 +11,7 @@ import (
 type Service interface {
 	CreateContact(ctx context.Context, c contact.Contact) (string, error)
 	UpdateContact(ctx context.Context, c contact.Contact) error
+	GetContact(ctx context.Context, userID, contactID string) (contact.Contact, error)
 }
 
 // Create
@@ -150,4 +151,48 @@ func endpointUpdateContact(ctx context.Context, s Service, request updateContact
 	}
 
 	return nil
+}
+
+// Get
+
+type getContactRequest struct {
+	UserID    string
+	ContactID string
+}
+
+func (r getContactRequest) Validate() error {
+	var errorMessages []string
+
+	if r.UserID == "" {
+		errorMessages = append(errorMessages, "userID is required")
+	}
+
+	if r.ContactID == "" {
+		errorMessages = append(errorMessages, "contactID is required")
+	}
+
+	if len(errorMessages) > 0 {
+		return myerror.NewBadRequestError("invalid request: %s", strings.Join(errorMessages, ", "))
+	}
+
+	return nil
+}
+
+type getContactResponse struct {
+	Contact contact.Contact
+}
+
+func endpointGetContact(ctx context.Context, s Service, request getContactRequest) (getContactResponse, error) {
+	if err := request.Validate(); err != nil {
+		return getContactResponse{}, myerror.Wrap(err, "endpointGetContact")
+	}
+
+	c, err := s.GetContact(ctx, request.UserID, request.ContactID)
+	if err != nil {
+		return getContactResponse{}, myerror.Wrap(err, "endpointGetContact")
+	}
+
+	return getContactResponse{
+		Contact: c,
+	}, nil
 }

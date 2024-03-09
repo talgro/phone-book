@@ -13,7 +13,7 @@ import (
 
 type Repository interface {
 	CreateContact(context.Context, contact.Contact) error
-	GetContact(context.Context, string) (contact.Contact, error)
+	GetContact(ctx context.Context, userID string, contactID string) (contact.Contact, error)
 	UpdateContact(context.Context, contact.Contact) error
 	IsPhoneExistsForUser(ctx context.Context, userID, phone string) (bool, error)
 }
@@ -83,17 +83,41 @@ func (s service) UpdateContact(ctx context.Context, c contact.Contact) error {
 		}
 	}()
 
-	if err := s.validateContactToUpdate(ctx, c); err != nil {
+	contactPrevState, err := s.repo.GetContact(ctx, c.UserID, c.ID)
+	if err != nil {
 		return myerror.Wrap(err, "service.UpdateContact")
 	}
 
-	c.UpdatedAt = time.Now()
+	if !contactPrevState.UpdatedAt.Equal(c.UpdatedAt) {
+		return myerror.NewBadRequestError("service.UpdateContact: contact has changed since the last read")
+	}
+
+	c = s.updateContactFields(contactPrevState, c)
 
 	if err := s.repo.UpdateContact(ctx, c); err != nil {
 		return myerror.Wrap(err, "service.UpdateContact")
 	}
 
 	return nil
+}
+
+func (s service) GetContact(ctx context.Context, userID, contactID string) (contact.Contact, error) {
+	c, err := s.repo.GetContact(ctx, userID, contactID)
+	if err != nil {
+		return contact.Contact{}, myerror.Wrap(err, "service.GetContact")
+	}
+
+	return c, nil
+}
+
+func (s service) updateContactFields(contactPrevState contact.Contact, c contact.Contact) contact.Contact {
+	contactPrevState.FirstName = c.FirstName
+	contactPrevState.LastName = c.LastName
+	contactPrevState.Address = c.Address
+	contactPrevState.Phone = c.Phone
+	contactPrevState.UpdatedAt = time.Now()
+
+	return contactPrevState
 }
 
 func (s service) lock(ctx context.Context, key string) error {
@@ -117,21 +141,5 @@ func (s service) validateContactToCreate(ctx context.Context, c contact.Contact)
 		return myerror.NewBadRequestError("validateContactToCreate: contact with phone %s already exists for user %s", c.Phone, c.UserID)
 	}
 
-	return nil
-}
-
-func (s service) validateContactToUpdate(ctx context.Context, c contact.Contact) error {
-	contactPrevState, err := s.repo.GetContact(ctx, c.ID)
-	if err != nil {
-		return myerror.Wrap(err, "validateContactToUpdate")
-	}
-
-	if contactPrevState.UserID != c.UserID {
-		return myerror.NewForbiddenError("validateContactToUpdate")
-	}
-
-	if contactPrevState.UpdatedAt != c.UpdatedAt {
-		return myerror.NewBadRequestError("validateContactToUpdate: contact has changed since the last read")
-	}
 	return nil
 }

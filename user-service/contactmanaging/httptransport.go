@@ -13,6 +13,7 @@ func ListenHTTP(s Service) {
 
 	r.POST("/users/:userID/contacts", makeHTTPEndpointCreateContact(s))
 	r.PUT("/users/:userID/contacts/:contactID", makeHTTPEndpointUpdateContact(s))
+	r.GET("/users/:userID/contacts/:contactID", makeHTTPEndpointGetContact(s))
 
 	fmt.Println("Server listening on port 8080")
 	if err := r.Run(":8080"); err != nil {
@@ -87,7 +88,7 @@ type updateContactHTTPRequest struct {
 	FirstName       string    `json:"firstName"`
 	LastName        string    `json:"lastName"`
 	Address         string    `json:"address"`
-	UpdateAtVersion time.Time `json:"updateAt"`
+	UpdateAtVersion time.Time `json:"updatedAt"`
 }
 
 func (r updateContactHTTPRequest) ToUpdateContactRequest() updateContactRequest {
@@ -130,4 +131,70 @@ func decodeUpdateContactHTTPRequest(c *gin.Context) (updateContactRequest, error
 	req.ContactID = c.Param("contactID")
 
 	return req.ToUpdateContactRequest(), nil
+}
+
+// Get
+type getContactHTTPRequest struct {
+	UserID    string
+	ContactID string
+}
+
+func (r getContactHTTPRequest) ToGetContactRequest() getContactRequest {
+	return getContactRequest{
+		UserID:    r.UserID,
+		ContactID: r.ContactID,
+	}
+}
+
+type getContactHTTPResponse struct {
+	ID        string    `json:"id"`
+	Phone     string    `json:"phone"`
+	FirstName string    `json:"firstName"`
+	LastName  string    `json:"lastName"`
+	Address   string    `json:"address"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func makeHTTPEndpointGetContact(s Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req, err := decodeGetContactHTTPRequest(c)
+		if err != nil {
+			myhttp.EncodeJSONError(c, err)
+			return
+		}
+
+		resp, err := endpointGetContact(c, s, req)
+		encodeGetContactResponse(c, resp, err)
+	}
+}
+
+func decodeGetContactHTTPRequest(c *gin.Context) (getContactRequest, error) {
+	var req getContactHTTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		return getContactRequest{}, myerror.Wrap(err, "decodeGetContactHTTPRequest")
+	}
+
+	req.UserID = c.Param("userID")
+	req.ContactID = c.Param("contactID")
+
+	return req.ToGetContactRequest(), nil
+}
+
+func encodeGetContactResponse(c *gin.Context, resp getContactResponse, err error) {
+	jsonResponse := getContactHTTPResponse{
+		ID:        resp.Contact.ID,
+		Phone:     resp.Contact.Phone,
+		FirstName: resp.Contact.FirstName,
+		LastName:  resp.Contact.LastName,
+		Address:   resp.Contact.Address,
+		CreatedAt: resp.Contact.CreatedAt,
+		UpdatedAt: resp.Contact.UpdatedAt,
+	}
+
+	if err != nil {
+		myhttp.EncodeJSONError(c, err)
+	} else {
+		myhttp.EncodeJSONSuccess(c, jsonResponse)
+	}
 }

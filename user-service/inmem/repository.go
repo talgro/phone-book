@@ -9,51 +9,57 @@ import (
 	"user-service/contact"
 )
 
-type userRepository struct {
+type contactRepository struct {
 	mu       sync.RWMutex
 	contacts map[string]contact.Contact
 }
 
-func (r *userRepository) GetContact(_ context.Context, ID string) (contact.Contact, error) {
-	for _, c := range r.contacts {
-		if c.ID == ID {
-			return c, nil
-		}
-	}
-
-	return contact.Contact{}, myerror.NewNotFoundError("inmem.GetContact: contact with ID %s not found", ID)
-}
-
-func (r *userRepository) UpdateContact(ctx context.Context, c contact.Contact) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func NewUserRepository() *userRepository {
-	return &userRepository{
+func NewUserRepository() *contactRepository {
+	return &contactRepository{
 		contacts: make(map[string]contact.Contact),
 	}
 }
 
-func (r *userRepository) CreateContact(_ context.Context, c contact.Contact) error {
+func (r *contactRepository) GetContact(_ context.Context, userID string, contactID string) (contact.Contact, error) {
+	contactKey := getContactKey(userID, contactID)
+	if c, ok := r.contacts[contactKey]; ok {
+		return c, nil
+	}
+
+	return contact.Contact{}, myerror.NewNotFoundError("inmem.GetContact: contact with ID %s not found for user %s", contactID, userID)
+}
+
+func (r *contactRepository) UpdateContact(_ context.Context, c contact.Contact) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	contactKey := getContactKey(c.UserID, c.Phone)
+	contactKey := getContactKey(c.UserID, c.ID)
 	r.contacts[contactKey] = c
 	return nil
 }
 
-func (r *userRepository) IsPhoneExistsForUser(_ context.Context, userID, phone string) (bool, error) {
+func (r *contactRepository) CreateContact(_ context.Context, c contact.Contact) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	contactKey := getContactKey(c.UserID, c.ID)
+	r.contacts[contactKey] = c
+	return nil
+}
+
+func (r *contactRepository) IsPhoneExistsForUser(_ context.Context, userID, phone string) (bool, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	contactKey := getContactKey(userID, phone)
+	for _, c := range r.contacts {
+		if c.UserID == userID && c.Phone == phone {
+			return true, nil
+		}
+	}
 
-	_, ok := r.contacts[contactKey]
-	return ok, nil
+	return false, nil
 }
 
-func getContactKey(userID, phone string) string {
-	return fmt.Sprintf("%s:%s", userID, phone)
+func getContactKey(userID, contactID string) string {
+	return fmt.Sprintf("%s:%s", userID, contactID)
 }
