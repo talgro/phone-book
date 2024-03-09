@@ -14,6 +14,8 @@ import (
 type Repository interface {
 	CreateContact(context.Context, contact.Contact) error
 	GetContact(ctx context.Context, userID string, contactID string) (contact.Contact, error)
+	DeleteContact(ctx context.Context, userID string, contactID string) error
+	SearchContacts(ctx context.Context, filters contact.Filters) (contacts []contact.Contact, err error)
 	UpdateContact(context.Context, contact.Contact) error
 	IsPhoneExistsForUser(ctx context.Context, userID, phone string) (bool, error)
 }
@@ -108,6 +110,23 @@ func (s service) GetContact(ctx context.Context, userID, contactID string) (cont
 	}
 
 	return c, nil
+}
+
+func (s service) DeleteContact(ctx context.Context, userID, contactID string) error {
+	if err := s.repo.DeleteContact(ctx, userID, contactID); err != nil {
+		return myerror.Wrap(err, "service.DeleteContact")
+	}
+
+	return nil
+}
+
+func (s service) SearchContacts(ctx context.Context, filters contact.Filters) ([]contact.Contact, error) {
+	contacts, err := s.repo.SearchContacts(ctx, filters)
+	if err != nil {
+		return nil, myerror.Wrap(err, "service.SearchContacts")
+	}
+
+	return contacts, nil
 }
 
 func (s service) updateContactFields(contactPrevState contact.Contact, c contact.Contact) contact.Contact {

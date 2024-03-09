@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"infrastructure/myerror"
+	"sort"
 	"sync"
 
 	"user-service/contact"
@@ -29,12 +30,52 @@ func (r *contactRepository) GetContact(_ context.Context, userID string, contact
 	return contact.Contact{}, myerror.NewNotFoundError("inmem.GetContact: contact with ID %s not found for user %s", contactID, userID)
 }
 
+func (r *contactRepository) SearchContacts(_ context.Context, filters contact.Filters) ([]contact.Contact, error) {
+	var userContacts []contact.Contact
+	for _, c := range r.contacts {
+		if c.UserID == filters.UserID {
+			userContacts = append(userContacts, c)
+		}
+	}
+
+	sort.Slice(userContacts, func(i, j int) bool {
+		return userContacts[i].FirstName < userContacts[j].FirstName
+	})
+
+	var contacts []contact.Contact
+	for i := filters.Offset; i < len(userContacts); i++ {
+		if len(contacts) == filters.Limit {
+			break
+		}
+
+		if (filters.Phone != "" && userContacts[i].Phone != filters.Phone) ||
+			(filters.FirstName != "" && userContacts[i].FirstName != filters.FirstName) ||
+			(filters.LastName != "" && userContacts[i].LastName != filters.LastName) ||
+			(filters.Address != "" && userContacts[i].Address != filters.Address) {
+			continue
+		}
+
+		contacts = append(contacts, userContacts[i])
+	}
+
+	return contacts, nil
+}
+
 func (r *contactRepository) UpdateContact(_ context.Context, c contact.Contact) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	contactKey := getContactKey(c.UserID, c.ID)
 	r.contacts[contactKey] = c
+	return nil
+}
+
+func (r *contactRepository) DeleteContact(_ context.Context, userID string, contactID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	contactKey := getContactKey(userID, contactID)
+	delete(r.contacts, contactKey)
 	return nil
 }
 
