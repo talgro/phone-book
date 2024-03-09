@@ -9,9 +9,10 @@ import (
 func main() {
 	inmemRepo := inmem.NewUserRepository()
 	inmemLockCache := inmem.NewLockCache()
+	inmemLRUCacheRepo := inmem.NewLRUCacheRepository(inmemRepo, 5)
 	logger := stdout.NewLogger()
 
-	service := contactmanaging.NewService(inmemRepo, inmemLockCache, logger)
+	service := contactmanaging.NewService(inmemLRUCacheRepo, inmemLockCache, logger)
 
 	contactmanaging.ListenHTTP(service)
 }

@@ -10,18 +10,18 @@ import (
 	"user-service/contact"
 )
 
-type contactRepository struct {
+type repository struct {
 	mu       sync.RWMutex
 	contacts map[string]contact.Contact
 }
 
-func NewUserRepository() *contactRepository {
-	return &contactRepository{
+func NewUserRepository() *repository {
+	return &repository{
 		contacts: make(map[string]contact.Contact),
 	}
 }
 
-func (r *contactRepository) GetContact(_ context.Context, userID string, contactID string) (contact.Contact, error) {
+func (r *repository) GetContact(_ context.Context, userID string, contactID string) (contact.Contact, error) {
 	contactKey := getContactKey(userID, contactID)
 	if c, ok := r.contacts[contactKey]; ok {
 		return c, nil
@@ -30,7 +30,7 @@ func (r *contactRepository) GetContact(_ context.Context, userID string, contact
 	return contact.Contact{}, myerror.NewNotFoundError("inmem.GetContact: contact with ID %s not found for user %s", contactID, userID)
 }
 
-func (r *contactRepository) SearchContacts(_ context.Context, filters contact.Filters) ([]contact.Contact, error) {
+func (r *repository) SearchContacts(_ context.Context, filters contact.Filters) ([]contact.Contact, error) {
 	var userContacts []contact.Contact
 	for _, c := range r.contacts {
 		if c.UserID == filters.UserID {
@@ -61,7 +61,7 @@ func (r *contactRepository) SearchContacts(_ context.Context, filters contact.Fi
 	return contacts, nil
 }
 
-func (r *contactRepository) UpdateContact(_ context.Context, c contact.Contact) error {
+func (r *repository) UpdateContact(_ context.Context, c contact.Contact) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -70,7 +70,7 @@ func (r *contactRepository) UpdateContact(_ context.Context, c contact.Contact) 
 	return nil
 }
 
-func (r *contactRepository) DeleteContact(_ context.Context, userID string, contactID string) error {
+func (r *repository) DeleteContact(_ context.Context, userID string, contactID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -79,7 +79,7 @@ func (r *contactRepository) DeleteContact(_ context.Context, userID string, cont
 	return nil
 }
 
-func (r *contactRepository) CreateContact(_ context.Context, c contact.Contact) error {
+func (r *repository) CreateContact(_ context.Context, c contact.Contact) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -88,7 +88,7 @@ func (r *contactRepository) CreateContact(_ context.Context, c contact.Contact) 
 	return nil
 }
 
-func (r *contactRepository) IsPhoneExistsForUser(_ context.Context, userID, phone string) (bool, error) {
+func (r *repository) IsPhoneExistsForUser(_ context.Context, userID, phone string) (bool, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
