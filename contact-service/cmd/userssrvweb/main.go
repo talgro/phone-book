@@ -1,18 +1,18 @@
 package main
 
 import (
-	"user-service/contactmanaging"
-	"user-service/inmem"
-	"user-service/stdout"
+	"contact-service/contactmanaging"
+	"contact-service/inmem"
+	"contact-service/stdout"
 )
 
 func main() {
 	logger := stdout.NewLogger()
-	inmemRepo := inmem.NewUserRepository()
 	inmemLockCache := inmem.NewLockCache()
+	inmemRepo := inmem.NewUserRepository()
 	inmemLRUCacheRepo := inmem.NewLRUCacheRepository(inmemRepo, 5, logger)
 
 	service := contactmanaging.NewService(inmemLRUCacheRepo, inmemLockCache, logger)
 
-	contactmanaging.ListenHTTP(service)
+	contactmanaging.ServeHTTP(service)
 }

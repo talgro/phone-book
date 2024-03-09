@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 
-	"user-service/contact"
+	"contact-service/contact"
 )
 
 type repository struct {

@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	"infrastructure/myerror"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
 
-	"user-service/contact"
+	"contact-service/contact"
 )
 
 type Repository interface {
@@ -33,16 +34,16 @@ type Logger interface {
 }
 
 type service struct {
-	repo   Repository
-	cache  LockCache
-	logger Logger
+	repo      Repository
+	lockCache LockCache
+	logger    Logger
 }
 
 func NewService(repo Repository, locker LockCache, logger Logger) *service {
 	return &service{
-		repo:   repo,
-		cache:  locker,
-		logger: logger,
+		repo:      repo,
+		lockCache: locker,
+		logger:    logger,
 	}
 }
 
@@ -52,7 +53,7 @@ func (s service) CreateContact(ctx context.Context, c contact.Contact) (string, 
 		return "", myerror.Wrap(err, "service.CreateContact")
 	}
 	defer func() {
-		if err := s.cache.Unlock(ctx, lockKey); err != nil {
+		if err := s.lockCache.Unlock(ctx, lockKey); err != nil {
 			err = myerror.Wrap(err, "service.CreateContact")
 			s.logger.Warning(ctx, err)
 		}
@@ -79,7 +80,7 @@ func (s service) UpdateContact(ctx context.Context, c contact.Contact) error {
 		return myerror.Wrap(err, "service.UpdateContact")
 	}
 	defer func() {
-		if err := s.cache.Unlock(ctx, lockKey); err != nil {
+		if err := s.lockCache.Unlock(ctx, lockKey); err != nil {
 			err = myerror.Wrap(err, "service.UpdateContact")
 			s.logger.Warning(ctx, err)
 		}
@@ -140,7 +141,7 @@ func (s service) updateContactFields(contactPrevState contact.Contact, c contact
 }
 
 func (s service) lock(ctx context.Context, key string) error {
-	lockSuccess, err := s.cache.Lock(ctx, key)
+	lockSuccess, err := s.lockCache.Lock(ctx, key)
 	if err != nil {
 		return myerror.Wrap(err, "lock")
 	}
@@ -152,13 +153,22 @@ func (s service) lock(ctx context.Context, key string) error {
 }
 
 func (s service) validateContactToCreate(ctx context.Context, c contact.Contact) error {
+	if !validatePhoneOnlyDigits(c.Phone) {
+		return myerror.NewBadRequestError("validateContactToCreate: phone must be digits only")
+	}
+
 	isPhoneExistsForUser, err := s.repo.IsPhoneExistsForUser(ctx, c.UserID, c.Phone)
 	if err != nil {
-		return myerror.NewInternalError("validateContactToCreate: %w", err)
+		return myerror.Wrap(err, "validateContactToCreate")
 	}
 	if isPhoneExistsForUser {
 		return myerror.NewBadRequestError("validateContactToCreate: contact with phone %s already exists for user %s", c.Phone, c.UserID)
 	}
 
 	return nil
+}
+
+func validatePhoneOnlyDigits(phone string) bool {
+	regex := regexp.MustCompile(`^[0-9]+$`)
+	return regex.MatchString(phone)
 }

@@ -1,10 +1,16 @@
 FROM golang:1.21 AS builder
 
-WORKDIR /code/service
-COPY ./users-service/go.mod .
-#COPY ./users-service/go.sum .
+WORKDIR /code/infrastructure
+COPY ./infrastructure/go.mod .
+COPY ./infrastructure/go.sum .
 RUN go mod download all
-COPY ./users-service/ .
+COPY    ./infrastructure/ .
+
+WORKDIR /code/service
+COPY ./contact-service/go.mod .
+COPY ./contact-service/go.sum .
+RUN go mod download all
+COPY ./contact-service/ .
 
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
     go build -a -ldflags '-extldflags "-static"' \
@@ -19,15 +25,12 @@ RUN apk update && apk add ca-certificates curl && rm -rf /var/cache/apk/*
 WORKDIR /service
 
 COPY --from=builder /code/service/svc               svc
-#COPY --from=builder /code/service/config            config
 
 ENV ENV development
-#ENV CONFIG_FOLDER_PATH config/development
-ENV SERVICE_NAME users-service
+ENV SERVICE_NAME contact-service
 
 ENV PORT ":3001"
 EXPOSE $PORT
 
 CMD ./svc \
     -port=$PORT \
-#    -configFolder=$CONFIG_FOLDER_PATH \

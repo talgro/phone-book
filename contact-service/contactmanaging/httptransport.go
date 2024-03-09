@@ -19,7 +19,7 @@ const (
 	searchContactsPaginationFormatURL = "%s?phone=%s&firstName=%s&lastName=%s&address=%s&limit=%d&offset=%d"
 )
 
-func ListenHTTP(s Service) {
+func ServeHTTP(s Service) {
 	r := gin.Default()
 
 	r.POST(createContactURL, makeHTTPEndpointCreateContact(s))

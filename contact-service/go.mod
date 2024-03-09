@@ -1,4 +1,4 @@
-module user-service
+module contact-service
 
 go 1.21.3
 

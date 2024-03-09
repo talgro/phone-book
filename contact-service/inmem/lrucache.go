@@ -4,11 +4,20 @@ import (
 	"container/list"
 	"context"
 	"fmt"
-	"infrastructure/myerror"
 	"sync"
-	"user-service/contact"
-	"user-service/contactmanaging"
+
+	"contact-service/contact"
+	"infrastructure/myerror"
 )
+
+type Repository interface {
+	CreateContact(context.Context, contact.Contact) error
+	GetContact(ctx context.Context, userID string, contactID string) (contact.Contact, error)
+	DeleteContact(ctx context.Context, userID string, contactID string) error
+	SearchContacts(ctx context.Context, filters contact.Filters) (contacts []contact.Contact, err error)
+	UpdateContact(context.Context, contact.Contact) error
+	IsPhoneExistsForUser(ctx context.Context, userID, phone string) (bool, error)
+}
 
 type Logger interface {
 	Info(ctx context.Context, msg string, keyvals ...interface{})
@@ -23,7 +32,7 @@ type CacheEntry struct {
 }
 
 type lruCache struct {
-	repo     contactmanaging.Repository
+	repo     Repository
 	capacity int
 	cache    map[string]*list.Element
 	lruList  *list.List
@@ -31,7 +40,7 @@ type lruCache struct {
 	logger   Logger
 }
 
-func NewLRUCacheRepository(repo contactmanaging.Repository, capacity int, logger Logger) *lruCache {
+func NewLRUCacheRepository(repo Repository, capacity int, logger Logger) *lruCache {
 	return &lruCache{
 		repo:     repo,
 		capacity: capacity,

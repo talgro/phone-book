@@ -1,13 +1,12 @@
 package contactmanaging
 
 import (
+	"contact-service/contact"
 	"context"
 	"fmt"
 	"infrastructure/myerror"
-	"regexp"
 	"strings"
 	"time"
-	"user-service/contact"
 )
 
 const (
@@ -30,11 +29,6 @@ type createContactRequest struct {
 	FirstName string
 	LastName  string
 	Address   string
-}
-
-func validatePhoneOnlyDigits(phone string) bool {
-	regex := regexp.MustCompile(`^[0-9]+$`)
-	return regex.MatchString(phone)
 }
 
 func (r createContactRequest) Validate() error {
